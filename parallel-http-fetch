@@ -1,0 +1,144 @@
+#!/usr/bin/env perl
+
+# Downloads a file in parallel using HTTP range requests with the curl
+# command
+
+use strict;
+use warnings;
+use feature ':5.10';
+
+# core
+use File::Basename;
+use File::Path;
+use File::Spec;
+use Time::HiRes qw();
+
+# CPAN
+use Getopt::Simple;
+use HTTP::Tiny;
+use LWP::UserAgent;
+use Parallel::ForkManager;
+use URI;
+
+my ($options) = {
+    help => {
+        type    => '',
+        env     => '-',
+        default => '',
+        order   => 99,
+    },
+    url => {
+        type      => '=s',
+        env       => '-',
+        'verbose' => 'URL of file to download',
+        default   => '',
+        order     => 1,
+    },
+    jobs => {
+        type      => '=i',
+        env       => '-',
+        'verbose' => 'Number of parallel jobs',
+        default   => 4,
+        order     => 2,
+    },
+};
+
+sub l {
+    my @msg = @_;
+    my $t = scalar(localtime);
+    say $t, ' ', @msg;
+}
+
+my $option = Getopt::Simple->new();
+
+if (!$option->getOptions($options, 'Usage: ' . File::Basename::basename($0) . ' [options]')) {
+    exit(-1);
+}
+
+my $jobs_size = $option->{'switch'}->{'jobs'};
+
+my $url = URI->new($option->{'switch'}->{'url'});
+
+my ($user, $password) = split(':', $url->userinfo);
+
+my $ua = LWP::UserAgent->new;
+my $req = HTTP::Request->new(HEAD => $url->as_string);
+$req->authorization_basic($user, $password);
+
+my $response = $ua->request($req);
+
+unless ($response->header('Accept-Ranges')) {
+    die("No Accept-Ranges HTTP header found");
+}
+
+unless ($response->header('Accept-Ranges') eq 'bytes') {
+    die("HTTP range byte requests not supported");
+}
+
+my $size = $response->header('Content-Length') || die("No Content-Length header found");
+
+my @done;
+
+my $pm = Parallel::ForkManager->new($jobs_size);
+
+$pm->run_on_finish(
+    sub {
+        my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $filename) = @_;
+        if ($exit_code != 0) {
+            die("Process $pid exited with code $exit_code, aborting\n");
+        }
+
+        l('Part ', $$filename, ' is done downloading');
+        push(@done, $$filename);
+    }
+);
+
+my $chunk_size = int($size / $jobs_size);
+
+my $time_start = Time::HiRes::time();
+
+l('Starting...');
+
+l('File size: ',  $size);
+l('Chunk size: ', $chunk_size);
+my $dir = File::Spec->catdir(File::Spec->tmpdir, File::Basename::basename($url->path) . '.parts');
+foreach my $id (0 .. $jobs_size - 1) {
+    $pm->start() and next;
+
+    my $filename = File::Spec->catfile($dir, 'part-' . $id . '.data');
+    mkpath($dir);
+    my $offset = ($id == 0) ? 0 : 1;
+    my $remaining = ($id == $jobs_size - 1) ? $size - ($jobs_size * $chunk_size) : 0;
+
+    my @cmd = (
+        'curl', '--silent', '--range',
+        ($id * $chunk_size + $offset) . '-' . ($id * $chunk_size + $chunk_size + $remaining),
+        '--output', $filename, $url->as_string
+    );
+
+    l("Running: ", join(' ', @cmd));
+    system(@cmd);
+
+    $pm->finish(0, \$filename);
+}
+$pm->wait_all_children;
+
+
+if (@done != $jobs_size) {
+    die("Not all pieces finished downloading, aborting\n");
+}
+
+l('Downloading done, elasped time ', Time::HiRes::time() - $time_start, ' seconds');
+
+my $f = File::Spec->catfile($dir, File::Basename::basename($url->path));
+open(my $fh, '>>', $f) or die $!;
+
+foreach my $i (0 .. $jobs_size - 1) {
+    l('Appending part ', $i, ' to ', $f);
+    open(my $fhi, '<', File::Spec->catfile($dir, 'part-' . $i . '.data')) or die $!;
+    while (my $data = <$fhi>) {
+        print {$fh} $data;
+    }
+    close($fhi);
+}
+close($fh) or die $!;
