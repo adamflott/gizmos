@@ -1,0 +1,86 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+# core
+use File::Temp;
+
+# CPAN
+use Term::ReadKey;
+
+my %stations = (
+    '480 Minutes' => [
+        'Live Every Friday: What alternative rock radio would sound like had Nirvana never happened.',
+        'http://mp1.somafm.com:8080'
+    ],
+    'Beat Blender' => [ 'A late night blend of deep-house and downtempo chill.', 'http://voxsc1.somafm.com:8384' ],
+    'Black Rock FM' =>
+      [ 'From the Playa to the world, for the 2011 Burning Man festival.', 'http://voxsc1.somafm.com:8040' ],
+    'Boot Liquor' => [ 'Americana Roots music for Cowhands, Cowpokes and Cowtippers', 'http://mp1.somafm.com:2000' ],
+    'Covers' =>
+      [ 'Just covers. Songs you know by artists you dont. Weve got you covered.', 'http://voxsc1.somafm.com:8700' ],
+    'Digitalis'  => [ 'Digitally affected analog rock to calm the agitated heart.', 'http://voxsc1.somafm.com:8900' ],
+    'Doomed'     => [ 'Dark industrial/ambient music for tortured souls.',          'http://voxsc1.somafm.com:8300' ],
+    'Drone Zone' => [
+        'Served best chilled, safe with most medications. Atmospheric textures with minimal beats.',
+        'http://streamer-dtc-aa01.somafm.com:80/stream/1032'
+    ],
+    'Groove Salad' =>
+      [ 'A nicely chilled plate of ambient/downtempo beats and grooves.', 'http://voxsc1.somafm.com:3000' ],
+    'Illinois Street Lounge' =>
+      [ 'Classic bachelor pad, playful exotica and vintage music of tomorrow.', 'http://voxsc1.somafm.com:8504' ],
+    'Indie Pop Rocks!' => [ 'New and classic favorite indie pop tracks.', 'http://voxsc1.somafm.com:8070' ],
+    'Lush' =>
+      [ 'Sensuous and mellow vocals, mostly female, with an electronic influence.', 'http://mp1.somafm.com:8808' ],
+    'Mission Control' => [ 'Celebrating NASA and Space Explorers everywhere.',      'http://voxsc1.somafm.com:2020' ],
+    'PopTron'         => [ 'Electropop and indie dance rock with sparkle and pop.', 'http://voxsc1.somafm.com:2200' ],
+    'Secret Agent'    => [
+        'The soundtrack for your stylish, mysterious, dangerous life. For Spies and PIs too!',
+        'http://streamer-dtc-aa02.somafm.com:80/stream/1021'
+    ],
+    'Sonic Universe' =>
+      [ 'Transcending the world of jazz with eclectic, avant-garde takes on tradition.', 'http://mp2.somafm.com:8604' ],
+    'Space Station Soma' =>
+      [ 'Tune in, turn on, space out. Spaced-out ambient and mid-tempo electronica.', 'http://voxsc1.somafm.com:8200' ],
+    'Suburbs of Goa'  => [ 'Desi-influenced Asian world beats and beyond.', 'http://voxsc1.somafm.com:8850' ],
+    'Tags Trip'       => [ 'Progressive house / trance. Tip top tunes.',    'http://ice.somafm.com/tags' ],
+    'Underground 80s' => [ 'Early 80s UK Synthpop and a bit of New Wave.',  'http://ice.somafm.com:2404' ],
+    'cliqhop idm' => [ 'Blipsnbeeps backed mostly w/beats. Intelligent Dance Music.', 'http://mp2.somafm.com:2668' ]
+);
+
+my @sorted;
+
+foreach (sort keys %stations) {
+    push @sorted, qq("$_"), '"' . $stations{$_}->[0] . '"';
+}
+
+my $stations_sorted = join(' ', @sorted);
+
+my (undef, $tempfile) = File::Temp::tempfile();
+
+my ($columns, $lines) = Term::ReadKey::GetTerminalSize();
+
+$lines   -= 10;
+$columns -= 10;
+my $menu_height = $lines + 5;
+
+while (1) {
+    system(
+"dialog --ok-label Play --cancel-label Exit --menu 'Soma.fm stations' $lines $columns $menu_height $stations_sorted 2> $tempfile"
+    );
+
+    my $retval = $? >> 8;
+
+    if ($retval == 0) {
+        my $choice;
+        open(my $fh, '<', $tempfile) or die $!;
+        $choice = <$fh>;
+        chomp($choice);
+        system('clear');
+        system("mplayer -nocache -quiet " . $stations{$choice}->[1]);
+    }
+    elsif ($retval == 1 || $retval == 255) {
+        exit;
+    }
+}
