@@ -372,16 +372,16 @@ sub colorize_diff {
     my @data = @_;
 
     map {
-        if (/^-/) {
+        if (/^Change/ || /^--- \// || /^\+\+\+ \//) {
+            $_ = color('reverse') . $_ . color('reset');
+        }
+        elsif (/^-/) {
             $_ = color('red') . $_ . color('reset');
         }
         elsif (/^\+/) {
             $_ = color('green') . $_ . color('reset');
         }
         elsif (/^==== /) {
-            $_ = color('reverse') . $_ . color('reset');
-        }
-        elsif (/^Change/) {
             $_ = color('reverse') . $_ . color('reset');
         }
     } @data;
