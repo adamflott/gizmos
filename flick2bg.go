@@ -87,7 +87,7 @@ func main() {
         }
 
         u, _ := user.Current()
-        var root string = fmt.Sprintf("%s/.bgpickr", u.HomeDir)
+        var root string = fmt.Sprintf("%s/.flick2bg", u.HomeDir)
 
         os.MkdirAll(root, 0700)
 
@@ -105,13 +105,15 @@ func main() {
             f.Write(body)
             f.Close()
 
-            var c *exec.Cmd
+            var c *exec.Cmd = nil
             switch runtime.GOOS {
             case "darwin":
                 c = exec.Command("osascript", "-e", "tell application \"Finder\"", "-e", fmt.Sprintf("set desktop picture to POSIX file \"%s\"", fn), "-e", "end tell")
             }
 
-            c.Run()
+            if c != nil {
+                c.Run()
+            }
         } else {
             panic(e)
         }
