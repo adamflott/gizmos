@@ -51,7 +51,8 @@ func main() {
         RotateTime    int    `goptions:"-t, --time, description='Change wallpaper in x minutes'"`
         goptions.Help `goptions:"-h, --help, description='Show this help'"`
     }{
-        APIKey: "43191244e34b0a7c712f2d2485e8afff",
+        APIKey:     "43191244e34b0a7c712f2d2485e8afff",
+        RotateTime: 30,
     }
 
     goptions.ParseAndFail(&options)
