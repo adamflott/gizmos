@@ -77,6 +77,7 @@ func main() {
         var d JSONContainer
         json.Unmarshal(b, &d)
 
+        // photos with an original URL are more likely to be higher quality
         var photo JSONPhoto
         for {
             rnd := rand.New(rand.NewSource(time.Now().Unix()))
@@ -87,7 +88,7 @@ func main() {
         }
 
         u, _ := user.Current()
-        var root string = fmt.Sprintf("%s/.flick2bg", u.HomeDir)
+        var root string = fmt.Sprintf("%s/.flickr2bg", u.HomeDir)
 
         os.MkdirAll(root, 0700)
 
