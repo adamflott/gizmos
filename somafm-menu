@@ -37,7 +37,7 @@ my %stations = (
     'PopTron'         => [ 'Electropop and indie dance rock with sparkle and pop.', 'http://voxsc1.somafm.com:2200' ],
     'Secret Agent'    => [
         'The soundtrack for your stylish, mysterious, dangerous life. For Spies and PIs too!',
-        'http://streamer-dtc-aa02.somafm.com:80/stream/1021'
+        'http://uwstream3.somafm.com:9010'
     ],
     'Sonic Universe' =>
       [ 'Transcending the world of jazz with eclectic, avant-garde takes on tradition.', 'http://mp2.somafm.com:8604' ],
